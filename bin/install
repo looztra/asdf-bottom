@@ -3,13 +3,14 @@
 set -e
 set -o pipefail
 
-# https://github.com/bootandy/dust/releases/download/v0.5.1/dust-v0.5.1-x86_64-unknown-linux-musl.tar.gz
-# https://github.com/bootandy/dust/releases/download/v0.5.1/dust-v0.5.1-x86_64-apple-darwin.tar.gz
-readonly github_coordinates=bootandy/dust
-readonly toolname=dust
-readonly filename_template=__BINARY_NAME__-v__VERSION__-__PLATFORM__.tar.gz
-readonly download_url_template=https://github.com/__GITHUB_COORDINATES__/releases/download/v__VERSION__/__FILENAME__
-readonly binary_path_in_archive_template=__ARCHIVE_DIR__/__BINARY_NAME__-v__VERSION__-__PLATFORM__/__BINARY_NAME__
+# https://github.com/ClementTsang/bottom/releases/download/0.4.3/bottom_x86_64-unknown-linux-gnu.tar.gz
+# https://github.com/ClementTsang/bottom/releases/download/0.4.3/bottom_x86_64-apple-darwin.tar.gz
+readonly github_coordinates=ClementTsang/bottom
+readonly toolname=bottom
+readonly toolaltname=btm
+readonly filename_template=__BINARY_NAME_____PLATFORM__.tar.gz
+readonly download_url_template=https://github.com/__GITHUB_COORDINATES__/releases/download/__VERSION__/__FILENAME__
+readonly binary_path_in_archive_template=__ARCHIVE_DIR__/btm
 
 # Borrowed to someone, but I don't remember who it was, sorry :(
 # Print message $2 with log-level $1 to STDERR, colorized if terminal
@@ -41,10 +42,15 @@ install_tool() {
   local install_path=$3
   local tmp_download_dir=$4
   local binary_name=$5
+  local binary_alt_name=$6
 
   local platform
   local bin_install_path="$install_path/bin"
   local binary_path="$bin_install_path/${binary_name}"
+  local binary_alt_path
+  if [[ -n "$binary_alt_name" ]]; then
+    binary_alt_path="$bin_install_path/${binary_alt_name}"
+  fi
   local download_url
   local download_path
 
@@ -67,6 +73,10 @@ install_tool() {
   log INFO "Copying binary"
   cp "$(get_binary_path_in_archive "${tmp_download_dir}" "${binary_name}" "${version}" "${platform}")" "${binary_path}"
   chmod +x "${binary_path}"
+  if [[ -n "$binary_alt_name" ]]; then
+    cp "${binary_path}" "${binary_alt_path}"
+    chmod +x "${binary_alt_path}"
+  fi
 }
 
 get_binary_path_in_archive() {
@@ -84,9 +94,12 @@ get_platform() {
   local operating_system
   operating_system=$(uname | tr '[:upper:]' '[:lower:]')
   if [[ "$operating_system" == "linux" ]]; then
-    echo "x86_64-unknown-linux-musl"
-  else
+    echo "x86_64-unknown-linux-gnu"
+  elif [[ "$operating_system" == "darwin" ]]; then
     echo "x86_64-apple-darwin"
+  else
+    log ERROR "Unsupported value for operating_system [$operating_system]"
+    exit 171
   fi
 }
 
@@ -118,4 +131,4 @@ get_download_url() {
 
 readonly _tmp_download_dir="$(mktemp -d -t 'asdf_XXXXXXXX')"
 trap 'rm -rf "${_tmp_download_dir}"' EXIT
-install_tool "$ASDF_INSTALL_TYPE" "$ASDF_INSTALL_VERSION" "$ASDF_INSTALL_PATH" "$_tmp_download_dir" "$toolname"
+install_tool "$ASDF_INSTALL_TYPE" "$ASDF_INSTALL_VERSION" "$ASDF_INSTALL_PATH" "$_tmp_download_dir" "$toolname" "$toolaltname"
